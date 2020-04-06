@@ -186,11 +186,11 @@ void getParamsAuto(char dir, int32_t* params)
 	switch (dir) {
 	case 'f':
 		params[0] = 0;
-		params[1] = 65;
+		params[1] = 52;
 		break;
 	case 'b':
 		params[0] = 0;
-		params[1] = 65;
+		params[1] = 52;
 		break;
 	case 'l':
 		params[0] = 5;
@@ -313,7 +313,7 @@ void sendCommand(char ch, void* conn)
 		int count = 0;
 		while (1) {
 			if (command == 'a' || command == 'd') {
-				command = count? command: 's';
+				command = count? command: 'x';
 				count = 1-count;
 				usleep(100000);
 			}
