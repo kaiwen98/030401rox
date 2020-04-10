@@ -8,8 +8,6 @@ E-mail: kint.zhao@slamtec.com
 
  <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="1 0 0 0 0 0 base_link laser 100" /> 
 
-<node pkg="tf" type="static_transform_publisher" name="map_scanmatcher_broadcaster" args="0 0 0 0 0 0 map scanmatcher_frame 100"/> 
-
 
     <node pkg="hector_mapping" type="hector_mapping" name="hector_height_mapping" output="screen">
       <param name="scan_topic" value="scan" />
