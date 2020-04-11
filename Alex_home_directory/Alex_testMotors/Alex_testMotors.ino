@@ -569,13 +569,13 @@ void calibrateMotors(){
     case RIGHT:
       curr_left = leftForwardTicksTurns;
       curr_right = rightReverseTicksTurns;
-      delay(50);
+      delay(10);
       curr_left = leftForwardTicksTurns - curr_left;
       curr_right = rightReverseTicksTurns - curr_right;
       error = curr_left - curr_right;
       
       if(error){
-        val += error*20;
+        val += error;
         curr_pwm_r = (val > 255)? 255: 
                    (val < 0)? 0:
                    val;
@@ -707,7 +707,7 @@ void left(float ang, float speed)
 {
   dir = LEFT;
   int val = pwmVal(speed);
-  curr_pwm_r = (1*val > 255)? 255: 1*val;
+  curr_pwm_r = (1.05*val > 255)? 255: 1.05*val;
   if(ang == 0) deltaTicks = 9999999;
   else deltaTicks = computeDeltaTicks(ang);
   targetTicks = leftReverseTicksTurns + deltaTicks;
@@ -733,7 +733,7 @@ void right(float ang, float speed)
 {
   dir = RIGHT;
   int val = pwmVal(speed);
-  curr_pwm_r = (1.36*val > 255)? 255: 1.36*val;
+  curr_pwm_r = (1.3*val > 255)? 255: 1.3*val;
 
   if(ang == 0) deltaTicks = 9999999;
   else deltaTicks = computeDeltaTicks(ang);
@@ -1042,7 +1042,7 @@ void loop() {
     }
   }*/
   signed int error = leftForwardTicks - rightForwardTicks;
-  left(8,85);
+  right(8,85);
   //reverse(50,50);
   //forward(0, 40);
   //forward(0, 50);
@@ -1055,13 +1055,11 @@ void loop() {
   //Serial.print("right forward ticks are ");
   //Serial.println(rightReverseTicks);
   //Serial.print("error is ");
-
+while(1){
   /*Serial.print("error is ");
   Serial.println(error);*/
   calibrateMotors();
-  delay(200);
-  stop();
-  delay(200);
+}
 
   
 }

@@ -195,11 +195,11 @@ void getParamsAuto(TPacket *commandPacket)
 	switch(commandPacket->command){
 		case COMMAND_FORWARD:
 			commandPacket->params[0] = 0;
-			commandPacket->params[1] = 65;
+			commandPacket->params[1] = 60;
 			break;
 		case COMMAND_REVERSE:
 			commandPacket->params[0] = 0;
-			commandPacket->params[1] = 65;
+			commandPacket->params[1] = 60;
 			break;
 		case COMMAND_TURN_LEFT:
 			commandPacket->params[0] = 5;
@@ -481,7 +481,7 @@ int main()
 					//printw("Number of d is %d\n", d);
 					command = (d == -1 || d == (char)255)? prevcommand : d;
 					prevcommand = command;
-					if(_count <= 1) usleep(470000);
+					if(_count <= 1) usleep(300000);
 				
 			//		printw("button\n");
 
@@ -534,7 +534,7 @@ int main()
 					i++;
 					j = 0;
 					refresh();
-					usleep(70000);
+					usleep(50000);
 				}
 				break;
 		}
