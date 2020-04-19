@@ -12,6 +12,10 @@
 #include <stdlib.h>
 #include "buffer.h"
 
+#include <string.h>
+#include <stdint.h>
+#include <stdio.h>
+
 #ifndef NULL
 #define NULL	(void *) 0x0
 #endif
@@ -55,6 +59,9 @@ void initBuffer(TBuffer *buffer, unsigned int size)
 TBufferResult writeBuffer(TBuffer *buffer, unsigned char data)
 {
 	enterAtomic(&buffer->csreg);
+	
+	printf("DEBUGGING WRITE BUFFER");
+	
 	if(buffer->buffer == NULL || buffer->size == 0)
 	{
 		exitAtomic(buffer->csreg);
@@ -90,14 +97,19 @@ TBufferResult readBuffer(TBuffer *buffer, unsigned char *data)
 {
 	enterAtomic(&buffer->csreg);
 	
+	printf("DEBUGGING READ BUFFER\n");
+	
 	if(buffer->buffer == NULL || buffer->size == 0)
 	{
+		printf("BUFFER INVALID\n");
 		exitAtomic(buffer->csreg);
+	
 		return BUFFER_INVALID;
 	}
 	
 	if(buffer->count == 0)
 	{
+		printf("BUFFER EMPTY\n");
 		exitAtomic(buffer->csreg);
 		return BUFFER_EMPTY;
 	}
@@ -106,6 +118,7 @@ TBufferResult readBuffer(TBuffer *buffer, unsigned char *data)
 	buffer->front = (buffer->front + 1) % buffer->size;
 	buffer->count--;
 	
+	printf("BUFFER IS NOT EMPTY = %d\n", buffer->count);
 	exitAtomic(buffer->csreg);
 	return BUFFER_OK;
 }
