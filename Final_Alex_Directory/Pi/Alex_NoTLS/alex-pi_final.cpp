@@ -193,11 +193,11 @@ void getParamsAuto(TPacket *commandPacket)
 	switch(commandPacket->command){
 		case COMMAND_FORWARD:
 			commandPacket->params[0] = 0;
-			commandPacket->params[1] = 65;
+			commandPacket->params[1] = 60;
 			break;
 		case COMMAND_REVERSE:
 			commandPacket->params[0] = 0;
-			commandPacket->params[1] = 65;
+			commandPacket->params[1] = 60;
 			break;
 		case COMMAND_TURN_LEFT:
 			commandPacket->params[0] = 5;
@@ -415,7 +415,10 @@ int main()
 				if(j >  0){
 					command = (d == -1 || d == (char)255)? prevcommand : d;
 					prevcommand = command;
+
 					if(_count <= 1) usleep(470000);
+
+				
 				} 
 				else if(i%3 == 0){
 					command = 'x';
@@ -442,7 +445,7 @@ int main()
 					i++;
 					j = 0;
 					refresh();
-					usleep(70000);
+					usleep(50000);
 				}
 				break;
 		}

@@ -568,13 +568,13 @@ void calibrateMotors(){
     case RIGHT:
       curr_left = leftForwardTicksTurns;
       curr_right = rightReverseTicksTurns;
-      delay(50);
+      delay(10);
       curr_left = leftForwardTicksTurns - curr_left;
       curr_right = rightReverseTicksTurns - curr_right;
       error = curr_left - curr_right;
       
       if(error){
-        val += error*20;
+        val += error;
         curr_pwm_r = (val > 255)? 255: 
                    (val < 0)? 0:
                    val;
@@ -706,7 +706,11 @@ void left(float ang, float speed)
 {
   dir = LEFT;
   int val = pwmVal(speed);
+<<<<<<< HEAD:Final_Alex_Directory/Arduino/Test_Motors/Alex_testMotors/Alex_testMotors.ino
   curr_pwm_r = 1.3* val;
+=======
+  curr_pwm_r = (1.05*val > 255)? 255: 1.05*val;
+>>>>>>> 89556b03c864a6b7966200656141b07d91819576:Alex_home_directory/Alex_testMotors/Alex_testMotors.ino
   if(ang == 0) deltaTicks = 9999999;
   else deltaTicks = computeDeltaTicks(ang);
   targetTicks = leftReverseTicksTurns + deltaTicks;
@@ -732,7 +736,11 @@ void right(float ang, float speed)
 {
   dir = RIGHT;
   int val = pwmVal(speed);
+<<<<<<< HEAD:Final_Alex_Directory/Arduino/Test_Motors/Alex_testMotors/Alex_testMotors.ino
   curr_pwm_r = 1.36*val;
+=======
+  curr_pwm_r = (1.3*val > 255)? 255: 1.3*val;
+>>>>>>> 89556b03c864a6b7966200656141b07d91819576:Alex_home_directory/Alex_testMotors/Alex_testMotors.ino
 
   if(ang == 0) deltaTicks = 9999999;
   else deltaTicks = computeDeltaTicks(ang);
@@ -1040,8 +1048,16 @@ void loop() {
       }
     }
   }*/
+<<<<<<< HEAD:Final_Alex_Directory/Arduino/Test_Motors/Alex_testMotors/Alex_testMotors.ino
   forward(0, 50);
 
+=======
+  signed int error = leftForwardTicks - rightForwardTicks;
+  right(8,85);
+  //reverse(50,50);
+  //forward(0, 40);
+  //forward(0, 50);
+>>>>>>> 89556b03c864a6b7966200656141b07d91819576:Alex_home_directory/Alex_testMotors/Alex_testMotors.ino
  
   while(1){
     //Serial.print("left forward ticks are ");
@@ -1049,11 +1065,16 @@ void loop() {
   //Serial.print("right forward ticks are ");
   //Serial.println(rightReverseTicks);
   //Serial.print("error is ");
-
+while(1){
   /*Serial.print("error is ");
   Serial.println(error);*/
+<<<<<<< HEAD:Final_Alex_Directory/Arduino/Test_Motors/Alex_testMotors/Alex_testMotors.ino
     calibrateMotors();
   }
+=======
+  calibrateMotors();
+}
+>>>>>>> 89556b03c864a6b7966200656141b07d91819576:Alex_home_directory/Alex_testMotors/Alex_testMotors.ino
 
   
 }

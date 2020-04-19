@@ -18,9 +18,9 @@ typedef struct comms
 	char dummy[3];
 } TComms;
 
-static char _privateBuffer[PACKET_SIZE];
+static unsigned char _privateBuffer[PACKET_SIZE];
 
-static TResult assemble(char *outputBuffer, const char *inputBuffer, int len)
+static TResult assemble(unsigned char *outputBuffer, unsigned char *inputBuffer, int len)
 {
 	// For copying to output buffer
 	static int counter=0;
@@ -82,7 +82,7 @@ static TResult assemble(char *outputBuffer, const char *inputBuffer, int len)
 }
 
 
-TResult deserialize(const char *buffer, int len, void *output)
+TResult deserialize(unsigned char *buffer, int len, void *output)
 {
 	TResult result = assemble(_privateBuffer, buffer, len);
 
@@ -118,10 +118,10 @@ TResult deserialize(const char *buffer, int len, void *output)
 		return result;
 }
 
-int serialize(char *buffer, void *dataStructure, size_t size)
+int serialize(unsigned char *buffer, void *dataStructure, size_t size)
 {
 	TComms comms;
-	
+
 	// We use this to detect for malformed packets
 	comms.magic = MAGIC_NUMBER;
 
