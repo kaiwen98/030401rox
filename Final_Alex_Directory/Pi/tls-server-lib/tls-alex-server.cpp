@@ -125,6 +125,7 @@ void rplidarSleep(){
 	if(!sender_fd) printf("File cannot be created or be written to!\n");
 	//Write to intermediate file "stop.bin" to toggle operating mode of LIDAR
 	write(sender_fd, buffer, 1);
+	printf("wrote!\n");
 }
 
 int readLidar(){
@@ -134,7 +135,9 @@ int readLidar(){
 	reader_fd = open("stop.bin", O_RDWR|O_CREAT,0777);
 	if(!reader_fd) printf("File cannot be created or be written to!\n");
 	//Write to intermediate file "stop.bin" to toggle operating mode of LIDAR
+	
 	read(reader_fd, buffer, 1);
+	printf("character is %c\n", buffer[0]);
 	if(buffer[0] == 'g') return 1;
 	else return 0;
 }
@@ -286,42 +289,46 @@ void handleCommand(void *conn, const char *buffer)
 
 		case 'f':
 		case 'F':
-			if(toggle) rplidarSleep();
-			while(!readLidar());
+			if(toggle) {
+				rplidarSleep();
+				while(readLidar() == 0){
+					usleep(3000000);
+				}
+			}
 			commandPacket.command = COMMAND_FORWARD;
 			uartSendPacket(&commandPacket);
 			break;
 
 		case 'b':
 		case 'B':
-			if(toggle) rplidarSleep();
-			while(!readLidar());
+			if(toggle) {
+				rplidarSleep();
+				while(readLidar() == 0){
+					usleep(3000000);
+				}
+			}
 			commandPacket.command = COMMAND_REVERSE;
 			uartSendPacket(&commandPacket);
 			break;
 
 		case 'l':
 		case 'L':
-			if(toggle) rplidarSleep();
-            while(!readLidar());
 			commandPacket.command = COMMAND_TURN_LEFT;
 			uartSendPacket(&commandPacket);
 			break;
 
 		case 'r':
 		case 'R':
-			if(toggle) rplidarSleep();
-			while(!readLidar());
 			commandPacket.command = COMMAND_TURN_RIGHT;
 			uartSendPacket(&commandPacket);
 			break;
 
 		case 's':
 		case 'S':
-			if(!toggle) rplidarSleep();
-			while(!readLidar());
 			commandPacket.command = COMMAND_STOP;
 			uartSendPacket(&commandPacket);
+			usleep(1000000);
+			if(!toggle) rplidarSleep();
 			break;
 
 		case 'c':
