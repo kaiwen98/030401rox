@@ -18,16 +18,22 @@
 #include <ncurses.h>
 #include "unistd.h"
 
+// Flags "WASD" Mode if set to 1. 
 int mode = 0;
+// Flags Sleep Mode if set to 1.
+int sleepMode = 0;
 
+// "WASD" mode global variables.
 char d = 'a';
 char command = 'x';
 char prevcommand = 'x';
 char finalcommand = 'x';
-int count = 0;
-int state = 0;
-int commandflag = 0;
+
+// Set to 1 when Arduino received the previous command in full and the TLS Client
+// Received the acknowledgement packet.
 int ok_flag = 1;
+
+// Set to 1 to quit the Client.
 int quit = 0;
 
 // Tells us that the network is running.
@@ -170,7 +176,7 @@ void flushInput()
 
 	while ((c = getchar()) != '\n' && c != EOF);
 }
-
+ 
 void getParams(int32_t* params)
 {
 	printf("Enter distance/angle in cm/degrees (e.g. 50) and power in %% (e.g. 75) separated by space.\n");
@@ -180,7 +186,9 @@ void getParams(int32_t* params)
 }
 
 
-//Transferred from alex_working
+// The main idea is to waive the requirement imposed on the operator to enter a parameter value.
+// This function automatically assigns parameter values to command packets sent due to "WASD" mode.
+// Substitutes getParams() from the studio implementation.
 void getParamsAuto(char dir, int32_t* params)
 {
 	switch (dir) {
@@ -217,7 +225,8 @@ void sendCommand(char ch, void* conn)
 
 	switch (ch)
 	{
-
+	
+	// Get and Clear odometry data from the Arduino.
 	case 'c':
 	case 'C':
 	case 'g':
@@ -229,6 +238,8 @@ void sendCommand(char ch, void* conn)
 		sendData(conn, buffer, sizeof(buffer));
 	break;
 
+	// Operator can turn off the RPLidar manually when operating in "Studio" mode.
+	// Sends a data packet to TLS Client to shut off the RPLidar motor.
 	case 'z':
 	case 'Z':
 		params[0]=0;
@@ -236,9 +247,26 @@ void sendCommand(char ch, void* conn)
 		memcpy(&buffer[2], params, sizeof(params));
 		buffer[1] = ch;
 		sendData(conn, buffer, sizeof(buffer));
+		// Set flag to allow next operator command to be processed.
 		ok_flag = 1;
 	break;
 
+	// Toggle Sleep Mode between ON and OFF.
+	// Sends the data packet to the TLS server
+	// to turn off the RPLidar motor.
+	case 'o':
+	case 'O':
+		sleepMode = 1- sleepMode;
+		params[0]=0;
+		params[1]=0;
+		buffer[1] = 'o';
+		memcpy(&buffer[2], params, sizeof(params));
+		sendData(conn, buffer, sizeof(buffer));
+		// Set flag to allow next operator command to be processed.
+		ok_flag = 1;
+	break;
+
+	// Alex stop command
 	case 'x':
 	case 'X':
 		params[0]=0;
@@ -248,13 +276,13 @@ void sendCommand(char ch, void* conn)
 		sendData(conn, buffer, sizeof(buffer));
 	break;
 
-
-
+	// Toggle "WASD" mode between ON and OFF.
 	case 'p':
 	case 'P':
 		mode = (mode == 1) ? 0 : 1;
 		break;
 
+	// Movement Commands for "Studio" Mode
 	case 'f':
 	case 'F':
 	case 'b':
@@ -269,7 +297,7 @@ void sendCommand(char ch, void* conn)
 		sendData(conn, buffer, sizeof(buffer));
 		break;
 
-
+	// Movement Commands for "WASD" mode.
 	case 'w':
 	case 'W':
 		buffer[1] = 'f';
@@ -302,6 +330,7 @@ void sendCommand(char ch, void* conn)
 		sendData(conn, buffer, sizeof(buffer));
 		break;
 
+	// Quit Client
 	case 'q':
 	case 'Q':
 		quit = 1;
@@ -323,26 +352,35 @@ void sendCommand(char ch, void* conn)
 		char prev = 'x';
 		int count = 0;
 		while (1) {
+			// This if condition enforces a step-by-step movement in turning.
+			// When 'a' and 'd' is held for an extensive amount of time,
+			// Command sent alternates between the turn movement command,
+			// and the stop command. 
+			// The robot hence turns in a sequence of movement and stop. 
 			if (command == 'a' || command == 'd') {
 				command = count? command: 'x';
 				count = 1-count;
 				usleep(100000);
 			}
 			
+			// If a new command is sent such that it is different from the previous command,
+			// Send the new command. Otherwise do nothing.
 			if (command != prev) {
 				prev = command;
 				finalcommand = command;
 				if (ok_flag) {
-					sendCommand(finalcommand, conn);			
+					sendCommand(finalcommand, conn);	
+					// Feedback to operator behind TLS client the command that is sent.		
 					printw("command is %c\n", finalcommand);
 				}
 			}
 		}
 	}
 
-
+	// This function flags a key register input from the user by returning 1, otherwise return 0.
 	int kbhit(void){
 		d = getch();
+		// If key input is valid
 		if(d != (char)255){
 			ungetch(d);
 			return 1;
@@ -356,21 +394,28 @@ void sendCommand(char ch, void* conn)
 	{
 		char ch;
 		int start = 0;
+		// int i is monitored to determine when to send a stop command.
+		// int j is monitored to determine when to send a new command.
 		int i = 0, j = 0;
 		int _count = 0;
+
+		// Set up parallel execution thread to handle approved key registers.
 		pthread_t commandthread;
 		pthread_create(&commandthread, NULL, movement_change_thread, (void*) conn);
 
 		while (!quit)
 		{
 		switch (mode) {
+		
+		// Studio mode.
 		case 0:
 				endwin();
                 printf("###################################\r\n");
 				printf("## Welcome to Alex's TLS Client! ##\r\n");
 				printf("###################################\r\r\n\n");
-				printf("Command (p=toggle to easy mode, f=forward, b=reverse, l=turn left, r=turn right, x=stop, c=clear stats, g=get stats, q=exit, z=put rplidar to sleep!)\n\r");
-				printf("Easy Mode (w=forward, s=reverse, a=turn left, d=turn right, other commands remain the same!)\n\r");
+				printf("Command (p=toggle to easy mode, f=forward, b=reverse, l=turn left, r=turn right, x=stop, c=clear stats, g=get stats, q=exit, z=put rplidar to sleep!)\n\n\r\r");
+				printf("Easy Mode (w=forward, s=reverse, a=turn left, d=turn right, other commands remain the same!)\n\n\r");
+				printf("in WASD mode, press 'O' to activate sleep mode!\n\n\r\r");
 				// Purge extraneous characters from input stream
 				scanf("%c", &ch);
 				flushInput();
@@ -382,6 +427,7 @@ void sendCommand(char ch, void* conn)
 		//This is to as best as we could, simulate gaming controls to allow us to navigate the map with precision and ease.
 		case 1: clear();
 			if (!start) {
+				// Configuration commands to set up ncurses.h. Only execute once when the mode first switches to "WASD".
 				initscr();
 				cbreak();
 				noecho();
@@ -389,21 +435,35 @@ void sendCommand(char ch, void* conn)
 				scrollok(stdscr, TRUE);
 			}
 			start = 1;
+
+			// Only set command when received character is valid.
+			// If invalid character is recognised, set to previous command, indicating no change in command.
 			if (j > 0) {
 				command = (d == -1 || d == (char)255) ? prevcommand : d;
 				prevcommand = command;
+				// Sleep is applied to ignore the first NULL key register.
 				if (_count <= 1) usleep(470000);
 			}
+
+			// Listens for sequence of NULL key registers that persisted beyond a suitable threshold time.
 			else if (i % 3 == 0) {
 				command = 'x';
 				prevcommand = command;
 			}
-			if (ok_flag) printw("Ready!\n");
-			else {
+
+			// If the Arduino has finished processing the previous command and a corresponding acknowledgement packet is received.
+			if (ok_flag && !sleepMode) printw("Ready!\n");
+
+			// Indicates change in mode to sleep mode.
+			else if (ok_flag && sleepMode) printw("Sleep Mode activated!\n");
+
+			// If acknowledgement packet is not received, discard all inputs in input stream.
+			else if (!ok_flag) {
 				printw("Busy!\n");
 				getch();
 			}
 
+			// If a key register is detected, get character in input stream.
 			if (kbhit()) {
 				getch();
 				i = 0;
@@ -411,6 +471,8 @@ void sendCommand(char ch, void* conn)
 				_count++;
 				refresh();
 			}
+
+			// If no key register is detected, kbhit will return 0. Register a NULL key register.
 			else {
 				_count = 0;
 				i++;
@@ -432,7 +494,7 @@ void sendCommand(char ch, void* conn)
 
 	/* TODO: #define filenames for the client private key, certificatea,
 	   CA filename, etc. that you need to create a client */
-#define SERVER_NAME		"192.168.43.186"
+#define SERVER_NAME		"192.168.43.186" // Need to change if using a different network.
 #define PORT_NUM			5000
 #define CA_CERT_FNAME		"signing.pem"
 #define CLIENT_CERT_FNAME	"laptop.crt"

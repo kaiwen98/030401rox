@@ -192,32 +192,38 @@ bool start_motor(std_srvs::Empty::Request &req,
 int pwmgt_motorStop(){
 	int ret, receiver_fd;
 	char s[1];
-	//Change working directory to access stop.bin 
+	// Change working directory to access stop.bin 
 	ret = chdir("/home/pi/030401rox/Final_Alex_Directory/Pi/slam/src/rplidar_ros/");
-	//printf("%s\n", getcwd(s, 50));
-	//Set file description to binary file stop.bin to write to
+
+	// Set file description to binary file stop.bin to write to
 	receiver_fd = open("stop.bin", O_RDWR | O_CREAT, 0777);
-	//File should only have one letter: 's' and 'x'. This depends
-	//On the toggle mode as set by operator at TLS-client
+	if(!receiver_fd) printf("File cannot be created or be written to!\n");
+
+	// File should only have one letter: 's', 'x' or 'g'. This depends
+	// On the toggle mode as set by operator at TLS-client
 	read(receiver_fd, s, 1);
-	//printf("s is %c\n", s[0]);
+
 	if(s[0] == 's') return 1;
 	else return 0;
 }
 
 
-void sendOK(){
+void sendCode(char input){
 	int ret, sender_fd;
-	char s[1] = {'g'};
+	char s[1];
+	s[0] = input;
 	//Change working directory to access stop.bin 
 	ret = chdir("/home/pi/030401rox/Final_Alex_Directory/Pi/slam/src/rplidar_ros/");
-	//printf("%s\n", getcwd(s, 50));
-	//Set file description to binary file stop.bin to write to
+
+	// Set file description to binary file stop.bin to read from
 	sender_fd = open("stop.bin", O_RDWR | O_CREAT, 0777);
-	//File should only have one letter: 's' and 'x'. This depends
-	//On the toggle mode as set by operator at TLS-client
+	if(!sender_fd) printf("File cannot be created or be written to!\n");
+
+	// Write 'g' to stop.bin to signal that the  RPLidar motor has started to turn
 	write(sender_fd, s, 1);
 }
+//////////////////////////////
+
 
 int main(int argc, char * argv[]) {
 	ros::init(argc, argv, "rplidar_node");
@@ -278,6 +284,11 @@ int main(int argc, char * argv[]) {
 	ros::Time start_scan_time;
 	ros::Time end_scan_time;
 	double scan_duration;
+
+	// Reset stop.bin content to 's' such that when the lidar is first initialized, the motor will not spin by default.
+	// This is for power saving purpose.
+	sendCode('s');
+
 	while (ros::ok()) {
 
 		rplidar_response_measurement_node_t nodes[360*2];
@@ -289,14 +300,23 @@ int main(int argc, char * argv[]) {
 		scan_duration = (end_scan_time - start_scan_time).toSec() * 1e-3;
 
 		if(pwmgt_motorStop()){
-			//Motor stops moving
+			// Motor stops moving
 			drv->stopMotor();
 		}
 
 		else{
-			//Motor starts moving
+			// Motor starts moving
 			drv->startMotor();
-			sendOK();
+			
+			// Feedbacks to TLS server that the motor has started moving
+			// by writing to stop.bin.
+			sendCode('g');
+			
+			// This period of suspension is required to wait for the motor to reach usual operational frequency of turn. 
+			// When the motor starts turning, it accelerates from 0 velocity to a max turn velocity. 
+			// The algorithm cannot send scan data when the RPLidar is not spinning at operating speed; the consequence
+			// is that the map is fed with inconsistent scan data and map skewing will become prevalent.
+			usleep(2000000);
 			if (op_result == RESULT_OK) {
 				op_result = drv->ascendScanData(nodes, count);
 
@@ -358,6 +378,7 @@ int main(int argc, char * argv[]) {
 			ros::spinOnce();
 		}
 	}
+	printf("RPLidar is dead.\n");
 
 	// done!
 	drv->stop();

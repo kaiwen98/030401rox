@@ -43,14 +43,13 @@ static volatile int networkActive;
 
 static void *tls_conn = NULL;
 
-/*
+/* Alex Serial Routines to the Arduino */
 
-	Alex Serial Routines to the Arduino
+// Toggles RPLidar motor between normal operation and motor stop.
+int toggle = 1;
 
-	*/
-
-int toggle = 0;
-
+// Toggles sleep mode set by the operator.
+int sleepMode = 0;
 
 // Prototype for sendNetworkData
 void sendNetworkData(const char *, int);
@@ -84,6 +83,8 @@ void handleStatus(TPacket *packet)
 
 void uartSendPacket(TPacket *);
 
+// This function is required to control packet from 
+// Arduino to the RPLidar
 void sendOK(){
 	TPacket okpacket;
 	okpacket.packetType = PACKET_TYPE_RESPONSE;
@@ -114,50 +115,55 @@ void handleResponse(TPacket *packet)
 	}
 }
 
+
+// Put the RPLidar module to sleep mode.
+// This turns off the RPLidar motor temporarily.
 void rplidarSleep(){
 	int sender_fd, ret;
 	char buffer[1];
-	//Every time user presses corresponding key, rplidar should toggle between sleep mode and active mode
+
+	// Every time user presses the corresponding key, rplidar should toggle between sleep mode and active mode
 	toggle = 1-toggle;
 	buffer[0] = toggle ? 's': 'x';
+
+	// Change working directory to access stop.bin 
 	ret = chdir("/home/pi/030401rox/Final_Alex_Directory/Pi/slam/src/rplidar_ros/");
+
+	// Set file description to binary file stop.bin to write to
 	sender_fd = open("stop.bin", O_RDWR|O_CREAT,0777);
 	if(!sender_fd) printf("File cannot be created or be written to!\n");
-	//Write to intermediate file "stop.bin" to toggle operating mode of LIDAR
+
+	// Write to intermediate file "stop.bin" to toggle operating mode of LIDAR
 	write(sender_fd, buffer, 1);
-	printf("wrote!\n");
+	printf("Sleep Mode written!\n");
 }
 
+// Read the contents from stop.bin to determine whether the RPLidar motor has started to turn.
+// This function is necessary to ensure Alex only moves when the motor is spinning.
 int readLidar(){
 	int reader_fd, ret;
 	char buffer[1];
+
+	// Change working directory to access stop.bin 
 	ret = chdir("/home/pi/030401rox/Final_Alex_Directory/Pi/slam/src/rplidar_ros/");
+
+	// Set file description to binary file stop.bin to read from
 	reader_fd = open("stop.bin", O_RDWR|O_CREAT,0777);
 	if(!reader_fd) printf("File cannot be created or be written to!\n");
-	//Write to intermediate file "stop.bin" to toggle operating mode of LIDAR
-	
+
+	// Read from stop.bin. if the letter is 'g',
+	// return 1.
 	read(reader_fd, buffer, 1);
 	printf("character is %c\n", buffer[0]);
 	if(buffer[0] == 'g') return 1;
 	else return 0;
 }
 
-void handleCommand(TPacket *packet)
-{
-	switch(packet->command){
-		case COMMAND_RPLIDAR_SLEEP:
-				rplidarSleep();
-		break;
-	}
-}
-
-
 void handleUARTPacket(TPacket *packet)
 {
 	switch(packet->packetType)
 	{
 		case PACKET_TYPE_COMMAND:
-
 				// Only we send command packets, so ignore
 			break;
 
@@ -232,13 +238,7 @@ void *uartReceiveThread(void *p)
 	} // while
 }
 
-/*
-
-	Alex Network Routines
-
-	*/
-
-
+/* Alex Network Routines */
 void sendNetworkData(const char *data, int len)
 {
 	// Send only if network is active
@@ -284,14 +284,27 @@ void handleCommand(void *conn, const char *buffer)
 	{
 		case 'z':
 		case 'Z':
+			// Flags in stop.bin to power off RPLidar motor from node_alex.cpp
 			rplidarSleep();
+			break;
+		
+		case 'o':
+		case 'O':
+			sleepMode = 1- sleepMode;
+			if (sleepMode) printf("sleepMode activated!\n");
+			else printf("sleepMode deactivated!");
 			break;
 
 		case 'f':
 		case 'F':
-			if(toggle) {
+			// If toggle is 1, 
+			// RPLidar motor is to be powered down. 
+			if(toggle && sleepMode) {
 				rplidarSleep();
+				// Wait for the RPLidar motor to start moving
 				while(readLidar() == 0){
+					// Needs to suspend execution for a period of time to allow
+					// node_alex.cpp to write 'g' to stop.bin.
 					usleep(3000000);
 				}
 			}
@@ -301,9 +314,14 @@ void handleCommand(void *conn, const char *buffer)
 
 		case 'b':
 		case 'B':
-			if(toggle) {
+			// If toggle is 1, 
+			// RPLidar motor is to be powered down. 
+			if(toggle && sleepMode) {
 				rplidarSleep();
+				// Wait for the RPLidar motor to start moving
 				while(readLidar() == 0){
+					// Needs to suspend execution for a period of time to allow
+					// node_alex.cpp to write 'g' to stop.bin.
 					usleep(3000000);
 				}
 			}
@@ -327,8 +345,12 @@ void handleCommand(void *conn, const char *buffer)
 		case 'S':
 			commandPacket.command = COMMAND_STOP;
 			uartSendPacket(&commandPacket);
+			// The temporal suspension in execution is necessary to 
+			// ensure motor is shut off after the robot stops moving. 
+			// This is to avoid map skewing. 
 			usleep(1000000);
-			if(!toggle) rplidarSleep();
+			// if RPLidar motor is spinning, shut it off
+			if((!toggle) && sleepMode) rplidarSleep();
 			break;
 
 		case 'c':
@@ -433,6 +455,8 @@ int main()
 	sendHello();
 	printf("DONE.\n");
 
+	// Switch on the RPLidar motor, which is initially powered down.
+	rplidarSleep();
 
     // Loop while the server is active
     while(server_is_running());
