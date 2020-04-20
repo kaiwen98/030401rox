@@ -220,6 +220,7 @@ void sendOK(){
 }
 
 int main(int argc, char * argv[]) {
+	int flag = 0;
 	ros::init(argc, argv, "rplidar_node");
 
 	std::string serial_port;
@@ -291,12 +292,17 @@ int main(int argc, char * argv[]) {
 		if(pwmgt_motorStop()){
 			//Motor stops moving
 			drv->stopMotor();
+			flag = 1;
 		}
 
 		else{
 			//Motor starts moving
 			drv->startMotor();
-			sendOK();
+			if (flag){
+				sendOK();
+				flag = 0;
+				usleep(2000000);
+			}
 			if (op_result == RESULT_OK) {
 				op_result = drv->ascendScanData(nodes, count);
 

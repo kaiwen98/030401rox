@@ -50,7 +50,8 @@ static void *tls_conn = NULL;
 	*/
 
 int toggle = 0;
-
+int sleepMode = 0;
+int busy = 0;
 
 // Prototype for sendNetworkData
 void sendNetworkData(const char *, int);
@@ -286,13 +287,22 @@ void handleCommand(void *conn, const char *buffer)
 		case 'Z':
 			rplidarSleep();
 			break;
+			
+		case 'o':
+		case 'O':
+			sleepMode = 1- sleepMode;
+			if (sleepMode) printf("sleepMode activated!\n");
+			else printf("sleepMode deactivated!");
+			break;
 
 		case 'f':
 		case 'F':
-			if(toggle) {
+			if(toggle && sleepMode) {
 				rplidarSleep();
 				while(readLidar() == 0){
+					busy = 1;
 					usleep(3000000);
+					busy = 0;
 				}
 			}
 			commandPacket.command = COMMAND_FORWARD;
@@ -301,7 +311,7 @@ void handleCommand(void *conn, const char *buffer)
 
 		case 'b':
 		case 'B':
-			if(toggle) {
+			if(toggle && sleepMode) {
 				rplidarSleep();
 				while(readLidar() == 0){
 					usleep(3000000);
@@ -328,7 +338,7 @@ void handleCommand(void *conn, const char *buffer)
 			commandPacket.command = COMMAND_STOP;
 			uartSendPacket(&commandPacket);
 			usleep(1000000);
-			if(!toggle) rplidarSleep();
+			if((!toggle) && sleepMode) rplidarSleep();
 			break;
 
 		case 'c':
@@ -380,8 +390,10 @@ void *worker(void *conn)
 		// As long as we are getting data, network is active
 		networkActive=(len > 0);
 
-		if(len > 0)
+		if(len > 0){
+			while(busy);
 			handleNetworkData(conn, buffer, len);
+		}
 		else
 			if(len < 0)
 				perror("ERROR READING NETWORK: ");
