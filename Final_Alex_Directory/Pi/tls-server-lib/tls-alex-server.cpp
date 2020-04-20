@@ -125,7 +125,6 @@ void rplidarSleep(){
 	if(!sender_fd) printf("File cannot be created or be written to!\n");
 	//Write to intermediate file "stop.bin" to toggle operating mode of LIDAR
 	write(sender_fd, buffer, 1);
-	while()
 }
 
 int readLidar(){
@@ -135,7 +134,7 @@ int readLidar(){
 	reader_fd = open("stop.bin", O_RDWR|O_CREAT,0777);
 	if(!reader_fd) printf("File cannot be created or be written to!\n");
 	//Write to intermediate file "stop.bin" to toggle operating mode of LIDAR
-	read(sender_fd, buffer, 1);
+	read(reader_fd, buffer, 1);
 	if(buffer[0] == 'g') return 1;
 	else return 0;
 }

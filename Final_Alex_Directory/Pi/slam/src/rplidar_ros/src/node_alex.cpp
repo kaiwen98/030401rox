@@ -191,9 +191,9 @@ bool start_motor(std_srvs::Empty::Request &req,
 
 int pwmgt_motorStop(){
 	int ret, receiver_fd;
-	char s[50];
+	char s[1];
 	//Change working directory to access stop.bin 
-	ret = chdir("/home/030401rox/Final_Alex_Directory/Pi/slam/src/rplidar_ros/");
+	ret = chdir("/home/pi/030401rox/Final_Alex_Directory/Pi/slam/src/rplidar_ros/");
 	//printf("%s\n", getcwd(s, 50));
 	//Set file description to binary file stop.bin to write to
 	receiver_fd = open("stop.bin", O_RDWR | O_CREAT, 0777);
@@ -203,6 +203,20 @@ int pwmgt_motorStop(){
 	//printf("s is %c\n", s[0]);
 	if(s[0] == 's') return 1;
 	else return 0;
+}
+
+
+void sendOK(){
+	int ret, sender_fd;
+	char s[1] = {'g'};
+	//Change working directory to access stop.bin 
+	ret = chdir("/home/pi/030401rox/Final_Alex_Directory/Pi/slam/src/rplidar_ros/");
+	//printf("%s\n", getcwd(s, 50));
+	//Set file description to binary file stop.bin to write to
+	sender_fd = open("stop.bin", O_RDWR | O_CREAT, 0777);
+	//File should only have one letter: 's' and 'x'. This depends
+	//On the toggle mode as set by operator at TLS-client
+	write(receiver_fd, s, 1);
 }
 
 int main(int argc, char * argv[]) {
@@ -282,6 +296,7 @@ int main(int argc, char * argv[]) {
 		else{
 			//Motor starts moving
 			drv->startMotor();
+			sendOK();
 			if (op_result == RESULT_OK) {
 				op_result = drv->ascendScanData(nodes, count);
 
