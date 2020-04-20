@@ -216,7 +216,7 @@ void sendOK(){
 	sender_fd = open("stop.bin", O_RDWR | O_CREAT, 0777);
 	//File should only have one letter: 's' and 'x'. This depends
 	//On the toggle mode as set by operator at TLS-client
-	write(receiver_fd, s, 1);
+	write(sender_fd_fd, s, 1);
 }
 
 int main(int argc, char * argv[]) {
